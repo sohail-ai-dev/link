@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مجسم 3D - ظلة خشبية مخرَّمة</title>
+<style>
+:root{--bg:#dfeaf3;--fg:#0f3d36;--card:rgba(255,255,255,.88);--accent:#0f5c4d;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16222b;--fg:#e6f2ee;--card:rgba(20,34,40,.88);--accent:#3fb59b}}
+:root[data-theme="dark"]{--bg:#16222b;--fg:#e6f2ee;--card:rgba(20,34,40,.88);--accent:#3fb59b}
+html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,"Segoe UI",Tahoma,Arial,sans-serif;color:var(--fg);overflow:hidden}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.title{align-self:flex-start;background:var(--accent);color:#fff;padding:10px 16px;border-radius:16px;font-weight:700;font-size:16px}
+.title small{display:block;font-weight:400;font-size:12px;opacity:.9}
+.bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;pointer-events:auto}
+button{border:0;background:var(--card);color:var(--fg);padding:10px 14px;border-radius:12px;font-size:14px;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+button.on{background:var(--accent);color:#fff}
+.hint{text-align:center;font-size:12px;opacity:.8}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div class="title">ألواح خشبية مخرَّمة<small>ظل مع دخول بعض الضوء</small></div>
+  <div>
+    <div class="hint">جرّ بصباعك للدوران • قرّص للتكبير</div>
+    <div class="bar" style="margin-top:8px">
+      <button id="bAuto" class="on">دوران تلقائي</button>
+      <button id="bTop">منظر علوي</button>
+      <button id="bSide">منظر جانبي</button>
+      <button id="bFront">منظر 3/4</button>
+      <button id="bSun">حركة الشمس</button>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+var W=innerWidth,H=innerHeight;
+var renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(W,H);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+var scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9cc7ee);
+scene.fog=new THREE.Fog(0x9cc7ee,30,70);
+var camera=new THREE.PerspectiveCamera(45,W/H,0.1,200);
+
+scene.add(new THREE.HemisphereLight(0xcfe6ff,0x6b7a5a,0.7));
+var sun=new THREE.DirectionalLight(0xfff1d6,1.1);
+sun.position.set(8,12,6);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+var sc=sun.shadow.camera;sc.left=-12;sc.right=12;sc.top=12;sc.bottom=-12;sc.near=1;sc.far=40;
+scene.add(sun);
+
+function mat(c,r){return new THREE.MeshStandardMaterial({color:c,roughness:r==null?0.7:r})}
+function box(w,h,d,m,x,y,z,parent){var o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;(parent||scene).add(o);return o}
+
+// ground
+var ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80),mat(0x7a9a62,1));
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+var pave=box(14,0.05,10,mat(0xb9b3a8,0.9),0,0.025,0);
+
+var steel=mat(0x2f3338,0.45);
+var wood=mat(0xc07a3a,0.6);
+var wood2=mat(0xa8672d,0.65);
+
+// frame
+var L=8,Wd=5,Ht=3;
+var px=[-L/2,0,L/2],pz=[-Wd/2,Wd/2];
+px.forEach(function(x){pz.forEach(function(z){box(0.16,Ht,0.16,steel,x,Ht/2,z)})});
+[-Wd/2,Wd/2].forEach(function(z){box(L+0.3,0.2,0.12,steel,0,Ht+0.1,z)});
+for(var i=0;i<=4;i++){var x=-L/2+i*(L/4);box(0.1,0.14,Wd+0.2,steel,x,Ht+0.27,0)}
+// slats
+var n=Math.floor(L/0.15);
+for(var i=0;i<=n;i++){var x=-L/2+0.05+i*((L-0.1)/n);box(0.07,0.05,Wd+0.1,i%2?wood:wood2,x,Ht+0.37,0)}
+
+// picnic tables
+function table(x,z){
+  var g=new THREE.Group();
+  box(2.2,0.06,0.8,wood,0,0.76,0,g);
+  box(2.2,0.06,0.3,wood2,0,0.45,0.75,g);
+  box(2.2,0.06,0.3,wood2,0,0.45,-0.75,g);
+  [-0.9,0.9].forEach(function(dx){
+    box(0.08,0.76,0.7,steel,dx,0.38,0,g);
+    box(0.08,0.45,1.6,steel,dx,0.22,0,g);
+  });
+  g.position.set(x,0,z);scene.add(g);
+}
+table(-2.2,-1.1);table(2.2,-1.1);table(-2.2,1.3);table(2.2,1.3);
+
+// planters + plants
+function planter(x,z){
+  box(1.6,0.8,1.0,mat(0xa9a69e,0.95),x,0.4,z);
+  for(var i=0;i<6;i++){
+    var s=new THREE.Mesh(new THREE.IcosahedronGeometry(0.35+Math.random()*0.15,1),mat(i%2?0x3f7d3a:0x56994a,0.9));
+    s.position.set(x+(Math.random()-0.5)*1.1,0.95+Math.random()*0.3,z+(Math.random()-0.5)*0.6);
+    s.castShadow=true;scene.add(s);
+  }
+}
+planter(-L/2-0.9,-Wd/2-0.2);planter(L/2+0.9,Wd/2+0.2);
+
+// trees
+function tree(x,z,h){
+  var t=box(0.25,h,0.25,mat(0x5a4330,1),x,h/2,z);
+  for(var i=0;i<4;i++){
+    var s=new THREE.Mesh(new THREE.IcosahedronGeometry(1.1+Math.random()*0.5,1),mat(i%2?0x4a8a3c:0x5fa04c,0.9));
+    s.position.set(x+(Math.random()-0.5)*1.3,h+0.3+Math.random()*0.8,z+(Math.random()-0.5)*1.3);
+    s.castShadow=true;scene.add(s);
+  }
+}
+[[-9,-6,3.2],[-7,6,3.6],[9,-5.5,3.4],[10,5,3.8],[0,-8,3.5],[-12,0,3.3],[13,0,3.6]].forEach(function(t){tree(t[0],t[1],t[2])});
+
+// lamp post
+box(0.1,4.5,0.1,steel,6,2.25,-4.2);
+var lamp=new THREE.Mesh(new THREE.SphereGeometry(0.3,16,12),new THREE.MeshStandardMaterial({color:0xeeeeee,emissive:0x555555}));
+lamp.position.set(6,4.6,-4.2);scene.add(lamp);
+
+// orbit
+var th=0.7,ph=1.0,rad=17,tT=th,tP=ph,tR=rad,auto=true,sunMove=false,sunT=0;
+var target=new THREE.Vector3(0,1.5,0);
+function upd(){
+  th+=(tT-th)*0.12;ph+=(tP-ph)*0.12;rad+=(tR-rad)*0.12;
+  camera.position.set(target.x+rad*Math.sin(ph)*Math.sin(th),target.y+rad*Math.cos(ph),target.z+rad*Math.sin(ph)*Math.cos(th));
+  camera.lookAt(target);
+}
+var ptrs={},lastD=0;
+var el=renderer.domElement;
+el.addEventListener('pointerdown',function(e){ptrs[e.pointerId]={x:e.clientX,y:e.clientY};el.setPointerCapture(e.pointerId);setAuto(false)});
+el.addEventListener('pointermove',function(e){
+  var p=ptrs[e.pointerId];if(!p)return;
+  var ids=Object.keys(ptrs);
+  if(ids.length===2){
+    ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+    var a=ptrs[ids[0]],b=ptrs[ids[1]];var d=Math.hypot(a.x-b.x,a.y-b.y);
+    if(lastD)tR=Math.min(40,Math.max(5,tR*(lastD/d)));lastD=d;return;
+  }
+  tT-=(e.clientX-p.x)*0.008;
+  tP=Math.min(1.5,Math.max(0.05,tP-(e.clientY-p.y)*0.008));
+  ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+});
+function up(e){delete ptrs[e.pointerId];lastD=0}
+el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+el.addEventListener('wheel',function(e){e.preventDefault();tR=Math.min(40,Math.max(5,tR+e.deltaY*0.01))},{passive:false});
+
+function $(id){return document.getElementById(id)}
+function setAuto(v){auto=v;$('bAuto').classList.toggle('on',v)}
+$('bAuto').onclick=function(){setAuto(!auto)};
+$('bTop').onclick=function(){setAuto(false);tP=0.05;tR=14;tT=0};
+$('bSide').onclick=function(){setAuto(false);tP=1.45;tR=16;tT=0};
+$('bFront').onclick=function(){setAuto(false);tP=1.0;tR=17;tT=0.7};
+$('bSun').onclick=function(){sunMove=!sunMove;this.classList.toggle('on',sunMove)};
+
+addEventListener('resize',function(){W=innerWidth;H=innerHeight;renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix()});
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(auto)tT+=0.004;
+  if(sunMove){sunT+=0.01;sun.position.set(Math.cos(sunT)*10,8+Math.sin(sunT*0.7)*3,Math.sin(sunT)*8)}
+  upd();renderer.render(scene,camera);
+}
+loop();
+})();
+</script>
+</body>
+</html>
